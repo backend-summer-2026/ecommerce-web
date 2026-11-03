@@ -8,18 +8,27 @@ export function cn(...inputs: ClassValue[]) {
 export function formatPrice(
   price: number | string,
   options: {
-    currency?: 'UZS' | 'USD';
+    currency?: 'USD' | 'UZS';
     notation?: Intl.NumberFormatOptions['notation'];
   } = {}
 ) {
-  const { currency = 'UZS', notation = 'standard' } = options;
+  const { currency = 'USD', notation = 'standard' } = options;
   const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
 
-  if (isNaN(numericPrice)) return '0 UZS';
+  if (isNaN(numericPrice)) return currency === 'USD' ? '$0' : '0 so\'m';
+
+  if (currency === 'USD') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation,
+      maximumFractionDigits: numericPrice % 1 === 0 ? 0 : 2,
+    }).format(numericPrice);
+  }
 
   return new Intl.NumberFormat('uz-UZ', {
     style: 'currency',
-    currency,
+    currency: 'UZS',
     notation,
     maximumFractionDigits: 0,
   }).format(numericPrice);

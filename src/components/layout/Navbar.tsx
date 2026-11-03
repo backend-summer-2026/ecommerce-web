@@ -19,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { SearchBar } from '@/features/catalog/components/SearchBar';
+import { CategoryMegaMenu } from '@/features/catalog/components/CategoryMegaMenu';
 import { toast } from 'sonner';
 
 export function Navbar() {
@@ -26,6 +28,7 @@ export function Navbar() {
   const { user, isAuthenticated, isLoading, logout } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
@@ -49,38 +52,60 @@ export function Navbar() {
   };
 
   const userDisplayName = user?.first_name || user?.email?.split('@')[0] || 'Foydalanuvchi';
-  const initials = (user?.first_name?.[0] || '') + (user?.last_name?.[0] || '') || (user?.email?.[0] || 'U').toUpperCase();
+  const initials =
+    (user?.first_name?.[0] || '') + (user?.last_name?.[0] || '') ||
+    (user?.email?.[0] || 'U').toUpperCase();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-        {/* Logo & Asosiy Menyu */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
-            <ShoppingBag className="size-6" />
-            <span>ApexShop</span>
+      <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
+        {/* Logo & Mega Menyu */}
+        <div className="flex items-center gap-4 shrink-0">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-black text-xl tracking-tight text-primary transition-opacity hover:opacity-90"
+          >
+            <div className="size-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+              <ShoppingBag className="size-5" />
+            </div>
+            <span className="hidden sm:inline bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              ApexShop
+            </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="/catalog" className="text-muted-foreground transition hover:text-foreground">
-              Katalog
-            </Link>
-            <Link href="/categories" className="text-muted-foreground transition hover:text-foreground">
-              Kategoriyalar
-            </Link>
-            <Link href="/featured" className="text-muted-foreground transition hover:text-foreground">
-              Ommabop
-            </Link>
-          </nav>
+
+          {/* Desktop Mega Menyu */}
+          <div className="hidden lg:block">
+            <CategoryMegaMenu />
+          </div>
         </div>
 
-        {/* Qidiruv & Amallar */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Qidiruv tugmasi */}
-          <Link href="/catalog">
-            <Button variant="ghost" size="icon" title="Qidiruv">
-              <Search className="size-5" />
-            </Button>
-          </Link>
+        {/* Qidiruv Paneli (Desktop) */}
+        <div className="hidden md:flex flex-1 max-w-xl mx-2">
+          <SearchBar />
+        </div>
+
+        {/* O'ng tarafdagi harakatlar */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Mobil Qidiruv tugmasi */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+            title="Qidiruv"
+          >
+            <Search className="size-5" />
+          </Button>
+
+          {/* Desktop qo'shimcha havolalar */}
+          <nav className="hidden xl:flex items-center gap-5 text-sm font-medium text-muted-foreground mr-2">
+            <Link href="/catalog" className="hover:text-foreground transition-colors">
+              Katalog
+            </Link>
+            <Link href="/brands" className="hover:text-foreground transition-colors">
+              Brendlar
+            </Link>
+          </nav>
 
           {/* Bildirishnomalar (Faqat kirgan foydalanuvchiga) */}
           {isAuthenticated && (
@@ -99,10 +124,10 @@ export function Navbar() {
 
           {/* Savatcha */}
           <Link href="/cart">
-            <Button variant="outline" size="sm" className="relative flex items-center gap-2">
+            <Button variant="outline" size="sm" className="relative flex items-center gap-2 rounded-full px-3">
               <ShoppingBag className="size-4" />
-              <span className="hidden sm:inline">Savatcha</span>
-              <Badge variant="default" className="size-5 p-0 flex items-center justify-center text-[11px]">
+              <span className="hidden sm:inline font-medium">Savatcha</span>
+              <Badge variant="default" className="size-5 p-0 flex items-center justify-center text-[11px] rounded-full">
                 0
               </Badge>
             </Button>
@@ -110,13 +135,13 @@ export function Navbar() {
 
           {/* Profil yoki Kirish */}
           {isLoading ? (
-            <Skeleton className="h-9 w-20 rounded-md" />
+            <Skeleton className="h-9 w-20 rounded-full" />
           ) : isAuthenticated && user ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 rounded-full border border-border p-1 pr-2.5 text-sm font-medium hover:bg-muted transition"
+                className="flex items-center gap-2 rounded-full border border-border p-1 pr-2.5 text-sm font-medium hover:bg-muted transition cursor-pointer"
                 aria-expanded={dropdownOpen}
               >
                 <div className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
@@ -132,7 +157,9 @@ export function Navbar() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-black/5 z-50">
                   <div className="px-3 py-2 border-b mb-1">
-                    <p className="text-sm font-semibold truncate">{user.first_name ? `${user.first_name} ${user.last_name || ''}` : userDisplayName}</p>
+                    <p className="text-sm font-semibold truncate">
+                      {user.first_name ? `${user.first_name} ${user.last_name || ''}` : userDisplayName}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     <div className="mt-1">
                       <Badge variant={isAdmin ? 'default' : 'secondary'} className="text-[10px] uppercase">
@@ -175,7 +202,7 @@ export function Navbar() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition"
+                    className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition cursor-pointer"
                   >
                     <LogOut className="size-4" />
                     <span>Tizimdan chiqish</span>
@@ -196,7 +223,7 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Mobil Menyu Tugmasi */}
+          {/* Mobil Menyu Ochish */}
           <Button
             variant="ghost"
             size="icon"
@@ -209,7 +236,17 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobil Navigatsiya */}
+      {/* Mobil Qidiruv Qatori */}
+      {mobileSearchOpen && (
+        <div className="md:hidden border-t px-4 py-2.5 bg-background">
+          <SearchBar
+            onSearchSubmit={() => setMobileSearchOpen(false)}
+            autoFocus
+          />
+        </div>
+      )}
+
+      {/* Mobil Navigatsiya Menyu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-background px-4 py-3 space-y-2">
           <Link
@@ -217,29 +254,40 @@ export function Navbar() {
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-muted"
           >
-            Katalog
+            Mahsulotlar Katalogi
           </Link>
           <Link
             href="/categories"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-muted"
           >
-            Kategoriyalar
+            Barcha Kategoriyalar
           </Link>
           <Link
-            href="/featured"
+            href="/brands"
             onClick={() => setMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-muted"
           >
-            Ommabop
+            Brendlar
+          </Link>
+          <Link
+            href="/catalog?ordering=-created_at"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-muted"
+          >
+            Yangi kelganlar
           </Link>
           {!isAuthenticated && (
             <div className="pt-2 border-t flex gap-2">
               <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1">
-                <Button size="sm" className="w-full">Kirish</Button>
+                <Button size="sm" className="w-full">
+                  Kirish
+                </Button>
               </Link>
               <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="flex-1">
-                <Button variant="outline" size="sm" className="w-full">Ro'yxatdan o'tish</Button>
+                <Button variant="outline" size="sm" className="w-full">
+                  Ro'yxatdan o'tish
+                </Button>
               </Link>
             </div>
           )}

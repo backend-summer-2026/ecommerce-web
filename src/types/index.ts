@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './catalog';
 
 export interface PaginatedResponse<T> {
   count: number;
