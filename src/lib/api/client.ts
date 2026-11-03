@@ -2,7 +2,13 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { getOrCreateGuestSessionKey } from '@/lib/storage';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// Brauzerda (client-side) bo'lsa, relative URL orqali Next.js rewrites ishlatiladi.
+// Bu CORS, Referrer-Policy va preflight (OPTIONS) muammolarini to'liq bartaraf etadi.
+// Serverda (SSR) bo'lsa, to'g'ridan-to'g'ri backend manziliga yuboriladi.
+const isClient = typeof window !== 'undefined';
+const API_BASE_URL = isClient
+  ? ''
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -20,10 +26,14 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.set('Authorization', `Bearer ${token}`);
     } else {
-      // Mehmon foydalanuvchilar savatchasi uchun X-Session-Key
-      const guestKey = getOrCreateGuestSessionKey();
-      if (guestKey) {
-        config.headers.set('X-Session-Key', guestKey);
+      // Mehmon sessiya kaliti faqat savatcha (cart) so'rovlari uchun kerak.
+      // Boshqa so'rovlarga noo'rin header qo'shish preflight xatolarining oldini oladi.
+      const isCartRequest = config.url?.includes('/cart/');
+      if (isCartRequest) {
+        const guestKey = getOrCreateGuestSessionKey();
+        if (guestKey) {
+          config.headers.set('X-Session-Key', guestKey);
+        }
       }
     }
 

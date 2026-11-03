@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Ecommerce Store — Zamonaviy Internet Do\'koni',
   description: 'Yuqori sifatli mahsulotlar, tezkor yetkazib berish va qulay to\'lov imkoniyati.',
+  referrer: 'no-referrer-when-downgrade',
 };
 
 export default function RootLayout({
