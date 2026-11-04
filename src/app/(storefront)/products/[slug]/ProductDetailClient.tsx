@@ -27,6 +27,11 @@ import { VariantSelector } from '@/features/catalog/components/VariantSelector';
 import { ProductCard } from '@/features/catalog/components/ProductCard';
 import { useProductDetail, useFeaturedProducts } from '@/features/catalog/hooks/useCatalog';
 import { useCartStore } from '@/features/cart/store/cartStore';
+import {
+  RatingStars,
+  ProductReviewsSection,
+  useProductRatingSummary,
+} from '@/features/reviews';
 import type { ProductVariant } from '@/types/catalog';
 
 interface ProductDetailClientProps {
@@ -43,6 +48,8 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'desc' | 'specs' | 'shipping'>('desc');
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+
+  const { data: ratingSummary } = useProductRatingSummary(product?.id);
 
   if (isLoading) {
     return (
@@ -181,6 +188,32 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-tight">
               {product.name}
             </h1>
+
+            {/* Reyting va Sharhlar yorlig'i */}
+            <div className="flex items-center gap-2.5 mt-2.5">
+              <RatingStars
+                rating={
+                  ratingSummary?.average_rating
+                    ? Number(ratingSummary.average_rating)
+                    : 0
+                }
+                size="sm"
+                showScore={Boolean(ratingSummary && ratingSummary.total_reviews > 0)}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('reviews');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
+              >
+                {ratingSummary && ratingSummary.total_reviews > 0
+                  ? `(${ratingSummary.total_reviews} ta sharh)`
+                  : 'Sharh qoldirish'}
+              </button>
+            </div>
+
             {product.short_description && (
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                 {product.short_description}
@@ -410,6 +443,12 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
           )}
         </div>
       </div>
+
+      {/* Sharhlar va Baholar Bo'limi */}
+      <ProductReviewsSection
+        productId={product.id}
+        productName={product.name}
+      />
 
       {/* O'xshash Mahsulotlar Bloki */}
       {relatedProducts.length > 0 && (
