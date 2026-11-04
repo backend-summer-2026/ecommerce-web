@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Minus,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import { ProductGallery } from '@/features/catalog/components/ProductGallery';
 import { VariantSelector } from '@/features/catalog/components/VariantSelector';
 import { ProductCard } from '@/features/catalog/components/ProductCard';
 import { useProductDetail, useFeaturedProducts } from '@/features/catalog/hooks/useCatalog';
+import { useCartStore } from '@/features/cart/store/cartStore';
 import type { ProductVariant } from '@/types/catalog';
 
 interface ProductDetailClientProps {
@@ -35,6 +37,7 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
   const router = useRouter();
   const { data: product, isLoading, error } = useProductDetail(slug);
   const { data: featuredData } = useFeaturedProducts();
+  const { addItem, isLoading: isCartAdding } = useCartStore();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -83,26 +86,28 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
   const priceToDisplay = currentVariant?.final_price || currentVariant?.price;
   const originalPrice = currentVariant?.is_on_sale && currentVariant?.price ? currentVariant.price : null;
 
-  const handleAddToCart = () => {
-    if (!isAvailable) {
+  const handleAddToCart = async () => {
+    if (!isAvailable || !currentVariant) {
       toast.error('Ushbu mahsulot omborda mavjud emas');
       return;
     }
 
-    setIsAddedToCart(true);
-    toast.success(
-      `${quantity}x "${product.name}${currentVariant ? ` (${currentVariant.title})` : ''}" savatchaga qo'shildi!`
-    );
-    setTimeout(() => setIsAddedToCart(false), 2500);
+    const success = await addItem(currentVariant.id, quantity, true);
+    if (success) {
+      setIsAddedToCart(true);
+      setTimeout(() => setIsAddedToCart(false), 2500);
+    }
   };
 
-  const handleBuyNow = () => {
-    if (!isAvailable) {
+  const handleBuyNow = async () => {
+    if (!isAvailable || !currentVariant) {
       toast.error('Ushbu mahsulot omborda mavjud emas');
       return;
     }
-    toast.success("Checkout sahifasiga o'tilmoqda...");
-    router.push('/checkout');
+    const success = await addItem(currentVariant.id, quantity, false);
+    if (success) {
+      router.push('/checkout');
+    }
   };
 
   // O'xshash / tavsiya etilgan mahsulotlar (featured dan)
@@ -256,9 +261,14 @@ export function ProductDetailClient({ slug }: ProductDetailClientProps) {
                 variant={isAddedToCart ? 'secondary' : 'default'}
                 className="w-full gap-2 font-bold text-sm h-12 shadow-md cursor-pointer"
                 onClick={handleAddToCart}
-                disabled={!isAvailable}
+                disabled={!isAvailable || isCartAdding}
               >
-                {isAddedToCart ? (
+                {isCartAdding ? (
+                  <>
+                    <Loader2 className="size-5 animate-spin" />
+                    <span>Qo'shilmoqda...</span>
+                  </>
+                ) : isAddedToCart ? (
                   <>
                     <Check className="size-5 text-emerald-600" />
                     <span>Qo'shildi!</span>

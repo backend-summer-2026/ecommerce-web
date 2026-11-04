@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useCartStore } from '@/features/cart/store/cartStore';
 import { SearchBar } from '@/features/catalog/components/SearchBar';
 import { CategoryMegaMenu } from '@/features/catalog/components/CategoryMegaMenu';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 export function Navbar() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuthStore();
+  const { itemCount, openDrawer } = useCartStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -122,16 +124,32 @@ export function Navbar() {
             </Link>
           )}
 
-          {/* Savatcha */}
-          <Link href="/cart">
-            <Button variant="outline" size="sm" className="relative flex items-center gap-2 rounded-full px-3">
-              <ShoppingBag className="size-4" />
-              <span className="hidden sm:inline font-medium">Savatcha</span>
-              <Badge variant="default" className="size-5 p-0 flex items-center justify-center text-[11px] rounded-full">
+          {/* Savatcha (Slide-over drawer ochadi) */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openDrawer}
+            className="relative flex items-center gap-2 rounded-full px-3 cursor-pointer hover:bg-muted transition"
+            title="Savatcha"
+          >
+            <ShoppingBag className="size-4" />
+            <span className="hidden sm:inline font-medium">Savatcha</span>
+            {itemCount > 0 ? (
+              <Badge
+                variant="default"
+                className="size-5 p-0 flex items-center justify-center text-[11px] rounded-full"
+              >
+                {itemCount > 99 ? '99+' : itemCount}
+              </Badge>
+            ) : (
+              <Badge
+                variant="secondary"
+                className="size-5 p-0 flex items-center justify-center text-[11px] rounded-full text-muted-foreground"
+              >
                 0
               </Badge>
-            </Button>
-          </Link>
+            )}
+          </Button>
 
           {/* Profil yoki Kirish */}
           {isLoading ? (
@@ -249,6 +267,24 @@ export function Navbar() {
       {/* Mobil Navigatsiya Menyu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-background px-4 py-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              openDrawer();
+            }}
+            className="w-full text-left flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium hover:bg-muted cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingBag className="size-4" />
+              <span>Savatcha</span>
+            </span>
+            {itemCount > 0 && (
+              <Badge variant="default" className="text-xs px-2 py-0">
+                {itemCount}
+              </Badge>
+            )}
+          </button>
           <Link
             href="/catalog"
             onClick={() => setMobileMenuOpen(false)}

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/sonner';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useCartStore } from '@/features/cart/store/cartStore';
 import { getOrCreateGuestSessionKey } from '@/lib/storage';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     useAuthStore.getState().initialize();
     getOrCreateGuestSessionKey();
+    useCartStore.getState().initialize();
   }, []);
 
   return (

@@ -4,7 +4,6 @@ import {
   setStoredTokens,
   clearStoredTokens,
   getGuestSessionKey,
-  clearGuestSessionKey,
 } from '@/lib/storage';
 import { authApi } from '@/features/auth/api/authApi';
 import type { User } from '@/types/auth';
@@ -47,12 +46,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Mehmon savatchasini hisobga birlashtirish
     const guestKey = getGuestSessionKey();
     if (guestKey) {
-      authApi
-        .mergeCart(guestKey)
-        .catch(() => null)
-        .finally(() => {
-          clearGuestSessionKey();
-        });
+      import('@/features/cart/store/cartStore')
+        .then(({ useCartStore }) => useCartStore.getState().mergeGuestCart())
+        .catch(() => null);
     }
   },
 

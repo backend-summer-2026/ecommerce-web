@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Check, PackageX, Sparkles } from 'lucide-react';
+import { ShoppingCart, Check, PackageX, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useCartStore } from '@/features/cart/store/cartStore';
+import { catalogApi } from '@/features/catalog/api/catalogApi';
 import type { ProductListItem } from '@/types/catalog';
 
 interface ProductCardProps {
@@ -18,6 +20,8 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const { addItem } = useCartStore();
 
   const { name, slug, brand, primary_category, main_image, price, is_in_stock } = product;
 
@@ -31,7 +35,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         )
       : 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -42,10 +46,26 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
     if (onAddToCart) {
       onAddToCart(product);
-    } else {
-      setIsAdded(true);
-      toast.success(`"${name}" savatchaga qo'shildi!`);
-      setTimeout(() => setIsAdded(false), 2000);
+      return;
+    }
+
+    try {
+      setIsAdding(true);
+      const detail = await catalogApi.getProductDetail(slug);
+      const variantId = detail.default_variant?.id || detail.variants?.[0]?.id;
+      if (!variantId) {
+        toast.error('Ushbu mahsulot varianti topilmadi');
+        return;
+      }
+      const success = await addItem(variantId, 1, true);
+      if (success) {
+        setIsAdded(true);
+        setTimeout(() => setIsAdded(false), 2000);
+      }
+    } catch {
+      toast.error('Savatchaga qo‘shishda xatolik yuz berdi');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -136,12 +156,18 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <Button
             size="icon"
             variant={isAdded ? 'default' : 'secondary'}
-            className="size-9 rounded-lg shrink-0 transition-all hover:bg-primary hover:text-primary-foreground"
+            className="size-9 rounded-lg shrink-0 transition-all hover:bg-primary hover:text-primary-foreground cursor-pointer"
             onClick={handleAddToCart}
-            disabled={!is_in_stock}
+            disabled={!is_in_stock || isAdding}
             title={is_in_stock ? "Savatchaga qo'shish" : 'Sotuvda mavjud emas'}
           >
-            {isAdded ? <Check className="size-4" /> : <ShoppingCart className="size-4" />}
+            {isAdding ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : isAdded ? (
+              <Check className="size-4" />
+            ) : (
+              <ShoppingCart className="size-4" />
+            )}
           </Button>
         </div>
       </div>
