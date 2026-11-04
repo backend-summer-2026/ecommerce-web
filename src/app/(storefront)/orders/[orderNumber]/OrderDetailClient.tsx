@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   XCircle,
   Sparkles,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import {
 } from '@/features/orders/utils/statusUtils';
 import { OrderTrackingTimeline } from '@/features/orders/components/OrderTrackingTimeline';
 import { CancelOrderModal } from '@/features/orders/components/CancelOrderModal';
+import { PaymentModal } from '@/features/payments/components/PaymentModal';
 
 interface OrderDetailClientProps {
   orderNumber: string;
@@ -36,6 +38,7 @@ interface OrderDetailClientProps {
 export function OrderDetailClient({ orderNumber }: OrderDetailClientProps) {
   const { data: order, isLoading, error, refetch } = useOrderDetail(orderNumber);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -124,8 +127,19 @@ export function OrderDetailClient({ orderNumber }: OrderDetailClientProps) {
           </p>
         </div>
 
-        {/* Amallar: Invoys va Bekor qilish */}
+        {/* Amallar: To'lov, Invoys va Bekor qilish */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {order.payment_status !== 'PAID' && order.status !== 'CANCELLED' && (
+            <Button
+              size="sm"
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="gap-2 cursor-pointer font-bold text-xs"
+            >
+              <CreditCard className="size-4" />
+              <span>Hozir to‘lash</span>
+            </Button>
+          )}
+
           <Link href={`/orders/${order.order_number}/invoice`}>
             <Button variant="outline" size="sm" className="gap-2 cursor-pointer font-semibold text-xs">
               <FileText className="size-4" />
@@ -154,6 +168,31 @@ export function OrderDetailClient({ orderNumber }: OrderDetailClientProps) {
           <div>
             <span className="font-bold">Bekor qilinish sababi:</span> {order.cancellation_reason}
           </div>
+        </div>
+      )}
+
+      {/* To'lov kutilayotganligi haqida bildirishnoma */}
+      {order.payment_status !== 'PAID' && order.status !== 'CANCELLED' && (
+        <div className="p-4 sm:p-5 rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <CreditCard className="size-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-foreground">To‘lov kutilmoqda</h4>
+              <p className="text-xs text-muted-foreground">
+                Buyurtmangiz uchun to‘lovni Payme, Click yoki saqlangan kartangiz orqali hoziroq amalga oshirishingiz mumkin.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="gap-2 font-bold text-xs shrink-0 cursor-pointer"
+          >
+            <CreditCard className="size-4" />
+            <span>To‘lovni amalga oshirish</span>
+          </Button>
         </div>
       )}
 
@@ -342,6 +381,15 @@ export function OrderDetailClient({ orderNumber }: OrderDetailClientProps) {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         onCancelled={() => refetch()}
+      />
+
+      {/* To'lov modali */}
+      <PaymentModal
+        orderNumber={order.order_number}
+        totalAmount={order.total_price}
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onPaymentSuccess={() => refetch()}
       />
     </div>
   );

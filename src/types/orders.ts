@@ -13,7 +13,8 @@ export type PaymentStatus =
   | 'PAID'
   | 'PARTIALLY_REFUNDED'
   | 'REFUNDED'
-  | 'FAILED';
+  | 'FAILED'
+  | 'CANCELLED';
 
 export type PaymentMethod =
   | 'PAYME'

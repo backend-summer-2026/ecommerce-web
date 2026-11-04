@@ -2,6 +2,22 @@ export * from './auth';
 export * from './catalog';
 export * from './cart';
 export * from './orders';
+export type {
+  PaymentProvider,
+  CardProvider,
+  CardBrand,
+  SavedCard,
+  AddCardPayload,
+  AddCardResponse,
+  VerifyCardPayload,
+  VerifyCardResponse,
+  InitializePaymentPayload,
+  InitializePaymentResponse,
+  PayWithCardPayload,
+  PayWithCardResponse,
+  PaymentItem,
+  CancelPaymentPayload,
+} from './payments';
 
 export interface PaginatedResponse<T> {
   count: number;

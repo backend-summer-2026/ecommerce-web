@@ -63,6 +63,7 @@ export const PAYMENT_STATUS_MAP: Record<
   PARTIALLY_REFUNDED: { label: 'Qisman qaytarilgan', color: 'text-orange-600', bg: 'bg-orange-50' },
   REFUNDED: { label: 'Qaytarilgan', color: 'text-slate-600', bg: 'bg-slate-50' },
   FAILED: { label: 'Muvaffaqiyatsiz', color: 'text-rose-600', bg: 'bg-rose-50' },
+  CANCELLED: { label: 'Bekor qilingan', color: 'text-muted-foreground', bg: 'bg-muted/50' },
 };
 
 export const PAYMENT_METHOD_MAP: Record<PaymentMethod, string> = {

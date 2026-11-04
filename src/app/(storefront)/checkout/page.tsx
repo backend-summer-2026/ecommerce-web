@@ -15,6 +15,8 @@ import {
   ArrowRight,
   ChevronRight,
   Sparkles,
+  Zap,
+  Plus,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -29,6 +31,17 @@ import {
   useCreateOrder,
 } from '@/features/orders/hooks/useOrders';
 import { ordersApi, parseOrderError } from '@/features/orders/api/ordersApi';
+import {
+  useSavedCards,
+  useInitializePayment,
+  usePayWithCard,
+} from '@/features/payments/hooks/usePayments';
+import { AddCardModal } from '@/features/payments/components/AddCardModal';
+import { parsePaymentError } from '@/features/payments/api/paymentsApi';
+import {
+  detectCardBrand,
+  maskCardNumber,
+} from '@/features/payments/utils/cardUtils';
 import {
   UZBEKISTAN_REGIONS,
   SHIPPING_METHOD_MAP,
@@ -71,8 +84,20 @@ export default function CheckoutPage() {
 
   // Yetkazib berish va to'lov usullari
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('STANDARD');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_ON_DELIVERY');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | 'SAVED_CARD'>('SAVED_CARD');
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
+  const [isAddCardOpen, setIsAddCardOpen] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [customerNotes, setCustomerNotes] = useState('');
+
+  // Saqlangan kartalar va to'lov mutatsiyalari
+  const { data: savedCards = [], isLoading: isCardsLoading } = useSavedCards(isAuthenticated);
+  const verifiedCards = savedCards.filter((c) => c.is_verified);
+  const defaultCard = verifiedCards.find((c) => c.is_default) || verifiedCards[0];
+  const activeCardId = selectedCardId ?? defaultCard?.id ?? null;
+
+  const initializePaymentMutation = useInitializePayment();
+  const payWithCardMutation = usePayWithCard();
 
   // Kupon holati
   const [couponInput, setCouponInput] = useState('');
@@ -149,7 +174,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    setIsProcessingPayment(true);
     try {
+      // Backend create order accepts standard PaymentMethod
+      const orderPaymentMethod: PaymentMethod =
+        paymentMethod === 'SAVED_CARD' ? 'PAYME' : paymentMethod;
+
       const order = await createOrderMutation.mutateAsync({
         shipping_address: {
           ...address,
@@ -157,15 +187,65 @@ export default function CheckoutPage() {
           phone_number: finalPhone,
         },
         shipping_method: shippingMethod,
-        payment_method: paymentMethod,
+        payment_method: orderPaymentMethod,
         coupon_code: appliedCoupon,
         customer_notes: customerNotes.trim() || undefined,
       });
 
-      toast.success(`Buyurtma #${order.order_number} muvaffaqiyatli qabul qilindi!`);
-      router.push(`/orders/${order.order_number}`);
+      if (paymentMethod === 'SAVED_CARD') {
+        if (!activeCardId) {
+          toast.success(`Buyurtma #${order.order_number} yaratildi! To‘lovni yakunlash uchun kartani tanlang.`);
+          router.push(`/orders/${order.order_number}`);
+          return;
+        }
+
+        try {
+          const payRes = await payWithCardMutation.mutateAsync({
+            order_number: order.order_number,
+            card_id: activeCardId,
+          });
+          toast.success(
+            payRes.message ||
+              `Buyurtma #${order.order_number} qabul qilindi va karta orqali to‘landi!`
+          );
+          router.push(`/orders/${order.order_number}?paid=true`);
+        } catch (payErr) {
+          toast.error(
+            `Buyurtma yaratildi, lekin to‘lovda xatolik: ${parsePaymentError(payErr)}`
+          );
+          router.push(`/orders/${order.order_number}`);
+        }
+      } else if (paymentMethod === 'PAYME' || paymentMethod === 'CLICK') {
+        try {
+          const returnUrl = `${window.location.origin}/payments/verify?order_number=${order.order_number}`;
+          const initRes = await initializePaymentMutation.mutateAsync({
+            order_number: order.order_number,
+            provider: paymentMethod,
+            return_url: returnUrl,
+          });
+
+          if (initRes.payment_url) {
+            toast.info(`${paymentMethod} to‘lov oynasiga yo‘naltirilmoqda...`);
+            window.location.href = initRes.payment_url;
+            return;
+          } else {
+            toast.success(`Buyurtma #${order.order_number} qabul qilindi!`);
+            router.push(`/orders/${order.order_number}`);
+          }
+        } catch (initErr) {
+          toast.error(
+            `Buyurtma saqlandi, to‘lov tizimiga o‘tishda xatolik: ${parsePaymentError(initErr)}`
+          );
+          router.push(`/orders/${order.order_number}`);
+        }
+      } else {
+        toast.success(`Buyurtma #${order.order_number} muvaffaqiyatli qabul qilindi!`);
+        router.push(`/orders/${order.order_number}`);
+      }
     } catch (err) {
       toast.error(parseOrderError(err));
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -452,11 +532,135 @@ export default function CheckoutPage() {
             </CardHeader>
 
             <CardContent className="pt-5 space-y-3">
+              {/* 1. Saqlangan karta (1-Click) */}
+              <div
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  paymentMethod === 'SAVED_CARD'
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'hover:bg-muted/40'
+                }`}
+                onClick={() => setPaymentMethod('SAVED_CARD')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="SAVED_CARD"
+                      checked={paymentMethod === 'SAVED_CARD'}
+                      onChange={() => setPaymentMethod('SAVED_CARD')}
+                      className="accent-primary"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-foreground">
+                          Saqlangan bank kartasi (1-Click)
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 gap-0.5 px-1.5 py-0"
+                        >
+                          <Zap className="size-2.5 fill-amber-500 text-amber-500" />
+                          <span>Tezkor</span>
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        SMS kodsiz bir bosishda tezkor va qulay to‘lov
+                      </p>
+                    </div>
+                  </div>
+                  <CreditCard className="size-4 text-muted-foreground" />
+                </div>
+
+                {/* Agar SAVED_CARD tanlangan bo'lsa kartalar ro'yxati */}
+                {paymentMethod === 'SAVED_CARD' && (
+                  <div
+                    className="mt-3 pt-3 border-t space-y-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isCardsLoading ? (
+                      <div className="py-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>Kartalar yuklanmoqda...</span>
+                      </div>
+                    ) : verifiedCards.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {verifiedCards.map((c) => {
+                          const brand = c.brand || detectCardBrand(c.card_number);
+                          const isCardSelected = activeCardId === c.id;
+                          return (
+                            <label
+                              key={c.id}
+                              className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                                isCardSelected
+                                  ? 'border-primary bg-background shadow-xs font-semibold'
+                                  : 'border-border/60 hover:bg-muted/60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <input
+                                  type="radio"
+                                  name="selected_saved_card"
+                                  checked={isCardSelected}
+                                  onChange={() => setSelectedCardId(c.id)}
+                                  className="accent-primary size-3.5"
+                                />
+                                <span className="font-mono tracking-wider">
+                                  {maskCardNumber(c.card_number)}
+                                </span>
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                                  {brand}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                <span>{c.provider}</span>
+                                {c.is_default && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-400 text-emerald-600">
+                                    Asosiy
+                                  </Badge>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsAddCardOpen(true)}
+                          className="w-full text-xs h-8 gap-1.5 text-primary hover:text-primary hover:bg-primary/10 mt-1"
+                        >
+                          <Plus className="size-3.5" />
+                          <span>Yangi karta qo‘shish</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-lg border border-dashed text-center space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Hozircha tasdiqlangan bank kartangiz yo‘q
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setIsAddCardOpen(true)}
+                          className="text-xs h-7 gap-1 font-bold"
+                        >
+                          <Plus className="size-3" />
+                          <span>Karta qo‘shish</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Boshqa to'lov turlari */}
               {(
                 [
-                  { id: 'PAYME', label: 'Payme', desc: 'Ilova yoki karta orqali onlayn to‘lov' },
-                  { id: 'CLICK', label: 'Click', desc: 'Click Up orqali tezkor to‘lov' },
-                  { id: 'UZUM', label: 'Uzum Bank', desc: 'Uzum ilovasi orqali to‘lov' },
+                  { id: 'PAYME', label: 'Payme', desc: 'Payme ilovasi yoki veb-sahifasi orqali onlayn to‘lov' },
+                  { id: 'CLICK', label: 'Click', desc: 'Click Up ilovasi orqali tezkor to‘lov' },
+                  { id: 'UZUM', label: 'Uzum Bank', desc: 'Uzum Bank ilovasi orqali to‘lov' },
                   { id: 'CASH_ON_DELIVERY', label: 'Qabul qilganda naqd', desc: 'Kuryer tovar topshirganda naqd to‘lash' },
                   { id: 'CARD_ON_DELIVERY', label: 'Qabul qilganda terminal', desc: 'Kuryer terminali orqali to‘lash' },
                 ] as Array<{ id: PaymentMethod; label: string; desc: string }>
@@ -655,13 +859,36 @@ export default function CheckoutPage() {
               {/* Buyurtmani tasdiqlash tugmasi */}
               <Button
                 type="submit"
-                disabled={createOrderMutation.isPending || preview?.has_stock_issues}
+                disabled={
+                  createOrderMutation.isPending ||
+                  isProcessingPayment ||
+                  preview?.has_stock_issues
+                }
                 className="w-full h-12 text-sm font-bold gap-2 shadow-md cursor-pointer mt-4"
               >
-                {createOrderMutation.isPending ? (
+                {createOrderMutation.isPending || isProcessingPayment ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Buyurtma yaratilmoqda...</span>
+                    <span>
+                      {paymentMethod === 'SAVED_CARD'
+                        ? 'To‘lov amalga oshirilmoqda...'
+                        : 'Buyurtma rasmiylashtirilmoqda...'}
+                    </span>
+                  </>
+                ) : paymentMethod === 'SAVED_CARD' ? (
+                  <>
+                    <Zap className="size-4 text-amber-300 fill-amber-300" />
+                    <span>1-Click to‘lash va buyurtma berish</span>
+                  </>
+                ) : paymentMethod === 'PAYME' ? (
+                  <>
+                    <span>Payme orqali to‘lovga o‘tish</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                ) : paymentMethod === 'CLICK' ? (
+                  <>
+                    <span>Click orqali to‘lovga o‘tish</span>
+                    <ArrowRight className="size-4" />
                   </>
                 ) : (
                   <>
@@ -679,6 +906,16 @@ export default function CheckoutPage() {
           </Card>
         </div>
       </form>
+
+      {/* Karta qo'shish modali */}
+      <AddCardModal
+        isOpen={isAddCardOpen}
+        onClose={() => setIsAddCardOpen(false)}
+        onCardAdded={(cardId) => {
+          setSelectedCardId(cardId);
+          setIsAddCardOpen(false);
+        }}
+      />
     </div>
   );
 }

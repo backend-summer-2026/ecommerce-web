@@ -16,6 +16,7 @@ import {
   Loader2,
   Package,
   CreditCard,
+  Receipt,
   Bell,
   LayoutDashboard,
   CheckCircle2,
@@ -185,6 +186,13 @@ export default function ProfilePage() {
               >
                 <CreditCard className="size-4 text-muted-foreground" />
                 <span>Bank kartalari</span>
+              </Link>
+              <Link
+                href="/profile/payments"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition"
+              >
+                <Receipt className="size-4 text-muted-foreground" />
+                <span>To‘lovlar tarixi</span>
               </Link>
               <Link
                 href="/notifications"
