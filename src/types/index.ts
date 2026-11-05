@@ -4,6 +4,7 @@ export * from './cart';
 export * from './orders';
 export * from './reviews';
 export * from './notifications';
+export * from './dashboard';
 export type {
   PaymentProvider,
   CardProvider,
