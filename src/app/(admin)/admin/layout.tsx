@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   Package,
+  Boxes,
   ShoppingBag,
   Users,
   CreditCard,
@@ -30,7 +31,8 @@ import { useSystemAlerts } from '@/features/dashboard/hooks/useDashboard';
 
 const navItems = [
   { href: '/admin', label: 'Tahlillar & KPI', icon: BarChart3 },
-  { href: '/admin/inventory', label: 'Ombor & Zaxiralar', icon: Package },
+  { href: '/admin/products', label: 'Mahsulotlar', icon: Package },
+  { href: '/admin/inventory', label: 'Ombor & Zaxiralar', icon: Boxes },
   { href: '/admin/orders', label: 'Buyurtmalar', icon: ShoppingBag },
   { href: '/admin/customers', label: 'Mijozlar CRM', icon: Users },
   { href: '/admin/payments', label: "To'lovlar & Qaytarish", icon: CreditCard },
