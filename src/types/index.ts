@@ -3,6 +3,7 @@ export * from './catalog';
 export * from './cart';
 export * from './orders';
 export * from './reviews';
+export * from './notifications';
 export type {
   PaymentProvider,
   CardProvider,

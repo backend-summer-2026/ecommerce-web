@@ -14,6 +14,7 @@ import {
   Package,
   LogOut,
   ChevronDown,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useCartStore } from '@/features/cart/store/cartStore';
 import { SearchBar } from '@/features/catalog/components/SearchBar';
 import { CategoryMegaMenu } from '@/features/catalog/components/CategoryMegaMenu';
+import { NotificationBell } from '@/features/notifications';
 import { toast } from 'sonner';
 
 export function Navbar() {
@@ -110,19 +112,7 @@ export function Navbar() {
           </nav>
 
           {/* Bildirishnomalar (Faqat kirgan foydalanuvchiga) */}
-          {isAuthenticated && (
-            <Link href="/notifications">
-              <Button variant="ghost" size="icon" className="relative" title="Xabarnomalar">
-                <Bell className="size-5" />
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 size-4 p-0 flex items-center justify-center text-[10px]"
-                >
-                  0
-                </Badge>
-              </Button>
-            </Link>
-          )}
+          {isAuthenticated && <NotificationBell />}
 
           {/* Savatcha (Slide-over drawer ochadi) */}
           <Button
@@ -213,6 +203,24 @@ export function Navbar() {
                   >
                     <Package className="size-4 text-muted-foreground" />
                     <span>Buyurtmalarim</span>
+                  </Link>
+
+                  <Link
+                    href="/notifications"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium hover:bg-muted transition"
+                  >
+                    <Bell className="size-4 text-muted-foreground" />
+                    <span>Xabarnomalar</span>
+                  </Link>
+
+                  <Link
+                    href="/profile/settings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium hover:bg-muted transition"
+                  >
+                    <Settings className="size-4 text-muted-foreground" />
+                    <span>Sozlamalar</span>
                   </Link>
 
                   <div className="border-t my-1" />
