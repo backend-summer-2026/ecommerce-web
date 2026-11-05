@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Minus, Plus, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 import type { CartItem } from '@/types/cart';
 import { useCartStore } from '@/features/cart/store/cartStore';
 
@@ -65,7 +65,7 @@ export function CartItemRow({ item, compact = false, onItemClick }: CartItemRowP
       >
         {variant.main_image && !imgError ? (
           <Image
-            src={variant.main_image}
+            src={normalizeImageUrl(variant.main_image)}
             alt={variant.product_name}
             fill
             sizes="120px"

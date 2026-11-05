@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { ShoppingCart, Check, PackageX, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCartStore } from '@/features/cart/store/cartStore';
 import { catalogApi } from '@/features/catalog/api/catalogApi';
@@ -75,7 +75,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <Link href={`/products/${slug}`} className="relative aspect-square w-full overflow-hidden bg-muted/40">
         {main_image && !imgError ? (
           <Image
-            src={main_image}
+            src={normalizeImageUrl(main_image)}
             alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"

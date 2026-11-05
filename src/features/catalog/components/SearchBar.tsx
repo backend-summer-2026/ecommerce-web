@@ -7,7 +7,7 @@ import { Search, X, Loader2, Sparkles, Tag, Layers } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSearchSuggestions } from '../hooks/useCatalog';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 
 interface SearchBarProps {
   className?: string;
@@ -212,7 +212,7 @@ export function SearchBar({
                         <div className="relative size-12 rounded-md bg-muted overflow-hidden shrink-0 border">
                           {p.image ? (
                             <Image
-                              src={p.image}
+                              src={normalizeImageUrl(p.image)}
                               alt={p.name}
                               fill
                               sizes="48px"

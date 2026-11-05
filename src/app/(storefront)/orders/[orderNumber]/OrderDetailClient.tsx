@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOrderDetail } from '@/features/orders/hooks/useOrders';
-import { formatPrice, formatDate } from '@/lib/utils';
+import { formatPrice, formatDate, normalizeImageUrl } from '@/lib/utils';
 import {
   ORDER_STATUS_MAP,
   PAYMENT_STATUS_MAP,
@@ -232,7 +232,7 @@ export function OrderDetailClient({ orderNumber }: OrderDetailClientProps) {
                   <div className="relative size-16 sm:size-20 rounded-xl border bg-muted/30 shrink-0 overflow-hidden">
                     {item.image_url ? (
                       <Image
-                        src={item.image_url}
+                        src={normalizeImageUrl(item.image_url)}
                         alt={item.product_name}
                         fill
                         className="object-cover"

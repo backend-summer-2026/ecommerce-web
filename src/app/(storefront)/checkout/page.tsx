@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useCartStore } from '@/features/cart/store/cartStore';
 import {
@@ -784,7 +784,7 @@ export default function CheckoutPage() {
                     <div className="relative size-12 rounded-lg border bg-muted/40 shrink-0 overflow-hidden">
                       {item.image_url ? (
                         <Image
-                          src={item.image_url}
+                          src={normalizeImageUrl(item.image_url)}
                           alt={item.product_name}
                           fill
                           className="object-cover"
