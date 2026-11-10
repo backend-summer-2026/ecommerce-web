@@ -54,12 +54,11 @@ export function formatDate(date: string | Date | number): string {
  */
 export function normalizeImageUrl(url?: string | null): string {
   if (!url) return '';
+  if (url.startsWith('/media/')) return url;
   if (url.startsWith('media/')) return `/${url}`;
-  if (url.startsWith('http://127.0.0.1:8000/media/')) {
-    return url.replace('http://127.0.0.1:8000', '');
-  }
-  if (url.startsWith('http://localhost:8000/media/')) {
-    return url.replace('http://localhost:8000', '');
+  // http://...:8000/media/... yoki boshqa har qanday host/IP dan kelgan media yo'lini nisbiy /media/... ga o'giradi
+  if (/^https?:\/\/[^/]+\/media\//.test(url)) {
+    return url.replace(/^https?:\/\/[^/]+(\/media\/.*)/, '$1');
   }
   return url;
 }

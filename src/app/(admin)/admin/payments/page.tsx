@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatPrice, formatDate } from '@/lib/utils';
 import {
   CreditCard,
@@ -209,6 +210,14 @@ export default function AdminPaymentsPage() {
               </div>
             )}
           </CardContent>
+
+          <AdminPagination
+            page={page}
+            totalCount={paymentsData?.count || 0}
+            pageSize={15}
+            onPageChange={(newPage) => setPage(newPage)}
+            isLoading={isPaymentsLoading}
+          />
         </Card>
       )}
 
@@ -277,6 +286,14 @@ export default function AdminPaymentsPage() {
               </div>
             )}
           </CardContent>
+
+          <AdminPagination
+            page={page}
+            totalCount={refundsData?.count || 0}
+            pageSize={15}
+            onPageChange={(newPage) => setPage(newPage)}
+            isLoading={isRefundsLoading}
+          />
         </Card>
       )}
 
@@ -337,6 +354,14 @@ export default function AdminPaymentsPage() {
               </div>
             )}
           </CardContent>
+
+          <AdminPagination
+            page={page}
+            totalCount={transactionsData?.count || 0}
+            pageSize={20}
+            onPageChange={(newPage) => setPage(newPage)}
+            isLoading={isTransactionsLoading}
+          />
         </Card>
       )}
 

@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatDate } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -233,6 +234,15 @@ export default function AdminAlertsPage() {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      <AdminPagination
+        page={page}
+        totalCount={data?.count || 0}
+        pageSize={20}
+        onPageChange={(newPage) => setPage(newPage)}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

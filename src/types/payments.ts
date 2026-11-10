@@ -63,7 +63,8 @@ export interface InitializePaymentResponse {
   amount: string | number;
   provider: PaymentProvider;
   status: PaymentStatus;
-  payment_url: string;
+  payment_url?: string;
+  checkout_url?: string;
   qr_code_url?: string | null;
   created_at?: string;
 }
@@ -91,6 +92,7 @@ export interface PaymentItem {
   status: PaymentStatus;
   card?: Partial<SavedCard> | null;
   payment_url?: string | null;
+  checkout_url?: string | null;
   paid_at?: string | null;
   cancel_reason?: string | null;
   created_at: string;

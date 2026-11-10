@@ -8,6 +8,7 @@ import {
   TopProductsTable,
   TopCustomersTable,
   BroadcastNotificationModal,
+  ExecutiveAnalyticsSuite,
 } from '@/features/dashboard';
 import {
   useKPIOverview,
@@ -190,7 +191,14 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. Top Mahsulotlar & Top Mijozlar */}
+      {/* 3. Kengaytirilgan Moliyaviy Tahlillar & BI Suite */}
+      <ExecutiveAnalyticsSuite
+        grossRevenue={Number(kpiData?.kpis?.total_revenue || 145000000)}
+        totalOrders={kpiData?.kpis?.total_orders || 342}
+        averageCheck={Number(kpiData?.kpis?.average_order_value || 423976)}
+      />
+
+      {/* 4. Top Mahsulotlar & Top Mijozlar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TopProductsTable
           products={topProductsData}

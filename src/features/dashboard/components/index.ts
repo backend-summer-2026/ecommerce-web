@@ -15,3 +15,5 @@ export * from './ReviewOfficialReplyModal';
 export * from './BroadcastNotificationModal';
 export * from './TemplateTestSendModal';
 export * from './StaffAuditLogsTable';
+export * from './OrdersKanbanBoard';
+export * from './ExecutiveAnalyticsSuite';

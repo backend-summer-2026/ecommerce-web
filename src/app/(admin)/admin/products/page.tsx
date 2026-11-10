@@ -8,15 +8,23 @@ import {
   useCategories,
   useBrands,
   useProductDetail,
+  useCreateProduct,
 } from '@/features/catalog/hooks/useCatalog';
-import { ProductListItem } from '@/types/catalog';
+import { ProductListItem, CreateProductPayload } from '@/types/catalog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 import { toast } from 'sonner';
+import { exportToCsv } from '@/lib/exportUtils';
+import { PermissionGate } from '@/features/admin/rbac';
+import {
+  ProductVariantMatrixEditor,
+  GeneratedVariant,
+} from '@/features/catalog/components/ProductVariantMatrixEditor';
 import {
   Package,
   Search,
@@ -37,6 +45,7 @@ import {
   Image as LucideImage,
   Upload,
   Check,
+  Download,
 } from 'lucide-react';
 
 export default function AdminProductsPage() {
@@ -52,7 +61,7 @@ export default function AdminProductsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Yangi mahsulot formasi holatlari
-  const [addMode, setAddMode] = useState<'form' | 'guide'>('form');
+  const [addMode, setAddMode] = useState<'form' | 'matrix' | 'guide'>('form');
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newBrand, setNewBrand] = useState('');
@@ -61,7 +70,92 @@ export default function AdminProductsPage() {
   const [newStock, setNewStock] = useState('10');
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [matrixVariants, setMatrixVariants] = useState<GeneratedVariant[]>([]);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+
+  const createProductMutation = useCreateProduct();
+
+  const handleExportProducts = () => {
+    if (products.length === 0) return;
+    exportToCsv(
+      products.map((p) => ({
+        'Nomi': p.name,
+        'Slug': p.slug,
+        'Brend': p.brand?.name || '—',
+        'Kategoriya': p.primary_category?.name || '—',
+        'Asosiy narx': p.price?.default_price || '0',
+        'Chegirmali narx': p.price?.default_discount_price || '—',
+        'Holat': p.is_in_stock ? 'Mavjud' : 'Tugagan',
+      })),
+      'mahsulotlar_katalogi'
+    );
+    toast.success('Mahsulotlar ro\'yxati CSV formatida yuklab olindi');
+  };
+
+  const handleCreateProduct = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newTitle.trim()) {
+      toast.error('Mahsulot nomini kiriting');
+      return;
+    }
+    if (!newPrice.trim()) {
+      toast.error('Mahsulot narxini kiriting');
+      return;
+    }
+
+    setIsFormSubmitting(true);
+    try {
+      const payload: CreateProductPayload = {
+        name: newTitle.trim(),
+        category: newCategory || undefined,
+        brand: newBrand || undefined,
+        price: newPrice.trim(),
+        discount_price: newDiscount.trim() || undefined,
+        stock: parseInt(newStock, 10) || 10,
+        image_url: newImageUrl.trim() || undefined,
+        description: newDescription.trim() || undefined,
+        short_description: newDescription.trim() ? newDescription.trim().slice(0, 200) : undefined,
+        variants: matrixVariants.length > 0 ? matrixVariants.map((mv) => ({
+          sku: mv.sku,
+          title: mv.title,
+          price: mv.price,
+          discountPrice: mv.discountPrice || undefined,
+          stock: mv.stock,
+          isDefault: mv.isDefault,
+          attributes: mv.attributes,
+        })) : undefined,
+      };
+
+      await createProductMutation.mutateAsync(payload);
+
+      toast.success(`"${newTitle}" mahsuloti muvaffaqiyatli qo'shildi!`);
+      setIsAddModalOpen(false);
+      setNewTitle('');
+      setNewPrice('');
+      setNewDiscount('');
+      setNewImageUrl('');
+      setNewDescription('');
+      setMatrixVariants([]);
+
+      // Yangi qo'shilgan mahsulotni ro'yxat boshida ko'rish uchun filtrlarni tozalash
+      setPage(1);
+      setSearchQuery('');
+      setSelectedCategory('');
+      setSelectedBrand('');
+      setStockFilter('all');
+      refetch();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { name?: string[]; price?: string[]; detail?: string } } };
+      const errorMsg =
+        axiosErr?.response?.data?.name?.[0] ||
+        axiosErr?.response?.data?.price?.[0] ||
+        axiosErr?.response?.data?.detail ||
+        'Mahsulotni saqlashda xatolik yuz berdi. Iltimos qaytadan urining.';
+      toast.error(errorMsg);
+    } finally {
+      setIsFormSubmitting(false);
+    }
+  };
 
   // Hooklar
   const {
@@ -91,7 +185,7 @@ export default function AdminProductsPage() {
   const totalPages = productsData?.total_pages ?? 1;
 
   // Statisika hisoblash
-  const onSaleCount = products.filter((p) => p.price.is_on_sale).length;
+  const onSaleCount = products.filter((p) => p.price?.is_on_sale).length;
   const inStockCount = products.filter((p) => p.is_in_stock).length;
 
   return (
@@ -112,22 +206,35 @@ export default function AdminProductsPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleExportProducts}
+            className="gap-2 cursor-pointer text-xs font-semibold"
+            title="Katalogni CSV formatida yuklab olish"
+          >
+            <Download className="size-4" />
+            <span className="hidden sm:inline">CSV Eksport</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => refetch()}
             disabled={isRefetching}
-            className="gap-2 cursor-pointer"
+            className="gap-2 cursor-pointer text-xs font-semibold"
           >
             <RefreshCw className={`size-4 ${isRefetching ? 'animate-spin' : ''}`} />
             <span>Yangilash</span>
           </Button>
 
-          <Button
-            size="sm"
-            onClick={() => setIsAddModalOpen(true)}
-            className="gap-2 font-bold cursor-pointer shadow-xs"
-          >
-            <Plus className="size-4" />
-            <span>Yangi Mahsulot Qo'shish</span>
-          </Button>
+          <PermissionGate permission="products:create">
+            <Button
+              size="sm"
+              onClick={() => setIsAddModalOpen(true)}
+              className="gap-2 font-bold cursor-pointer shadow-xs text-xs"
+            >
+              <Plus className="size-4" />
+              <span>Yangi Mahsulot Qo'shish</span>
+            </Button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -337,38 +444,13 @@ export default function AdminProductsPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
-            <span className="text-xs text-muted-foreground">
-              Jami <strong>{totalCount}</strong> ta tovardan {(page - 1) * 15 + 1} -{' '}
-              {Math.min(page * 15, totalCount)} ko'rsatilmoqda
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="text-xs cursor-pointer"
-              >
-                Oldingi
-              </Button>
-              <span className="text-xs font-semibold px-2">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="text-xs cursor-pointer"
-              >
-                Keyingi
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminPagination
+          page={page}
+          totalCount={totalCount}
+          pageSize={15}
+          onPageChange={(newPage) => setPage(newPage)}
+          isLoading={isProductsLoading}
+        />
       </Card>
 
       {/* 1. Quick View Modal */}
@@ -593,6 +675,17 @@ export default function AdminProductsPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setAddMode('matrix')}
+                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${
+                  addMode === 'matrix'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Variantlar Matritsasi
+              </button>
+              <button
+                type="button"
                 onClick={() => setAddMode('guide')}
                 className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer ${
                   addMode === 'guide'
@@ -606,32 +699,7 @@ export default function AdminProductsPage() {
 
             <div className="p-6 overflow-y-auto space-y-5">
               {addMode === 'form' ? (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!newTitle.trim()) {
-                      toast.error('Mahsulot nomini kiriting');
-                      return;
-                    }
-                    if (!newPrice.trim()) {
-                      toast.error('Mahsulot narxini kiriting');
-                      return;
-                    }
-                    setIsFormSubmitting(true);
-                    setTimeout(() => {
-                      setIsFormSubmitting(false);
-                      toast.success(`"${newTitle}" mahsuloti rasmi bilan ro'yxatga olindi!`);
-                      setIsAddModalOpen(false);
-                      setNewTitle('');
-                      setNewPrice('');
-                      setNewDiscount('');
-                      setNewImageUrl('');
-                      setNewDescription('');
-                      refetch();
-                    }, 600);
-                  }}
-                  className="space-y-4"
-                >
+                <form onSubmit={handleCreateProduct} className="space-y-4">
                   {/* Tovar nomi */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">
@@ -886,6 +954,48 @@ export default function AdminProductsPage() {
                     </Button>
                   </div>
                 </form>
+              ) : addMode === 'matrix' ? (
+                /* Enterprise Matrix Mode */
+                <div className="space-y-4">
+                  <ProductVariantMatrixEditor
+                    basePrice={newPrice || '100'}
+                    baseSkuPrefix={newTitle ? newTitle.slice(0, 4) : 'PROD'}
+                    onVariantsGenerated={(variants) => {
+                      setMatrixVariants(variants);
+                      toast.success(`${variants.length} ta variant biriktirishga tayyor`);
+                    }}
+                  />
+                  <div className="flex justify-end pt-3 border-t gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddModalOpen(false)}
+                      className="cursor-pointer"
+                    >
+                      Yopish
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isFormSubmitting}
+                      onClick={() => handleCreateProduct()}
+                      className="gap-2 font-bold cursor-pointer"
+                    >
+                      {isFormSubmitting ? (
+                        <>
+                          <RefreshCw className="size-3.5 animate-spin" />
+                          <span>Saqlanmoqda...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="size-4" />
+                          <span>Tayyor & Saqlash</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 /* Guide / Backoffice mode */
                 <div className="space-y-4">
@@ -955,14 +1065,11 @@ function ProductTableRow({
 }) {
   const [imgError, setImgError] = useState(false);
 
+  const defaultPrice = parseFloat(product.price?.default_price || '0');
+  const discountPrice = parseFloat(product.price?.default_discount_price || '0');
   const discountPercent =
-    product.price.is_on_sale && product.price.default_discount_price
-      ? Math.round(
-          ((parseFloat(product.price.default_price) -
-            parseFloat(product.price.default_discount_price)) /
-            parseFloat(product.price.default_price)) *
-            100
-        )
+    product.price?.is_on_sale && discountPrice && defaultPrice > 0
+      ? Math.round(((defaultPrice - discountPrice) / defaultPrice) * 100)
       : 0;
 
   return (
@@ -1017,24 +1124,28 @@ function ProductTableRow({
       {/* Narxi */}
       <td className="py-3 px-4">
         <div className="flex flex-col">
-          {product.price.is_on_sale && product.price.default_discount_price ? (
-            <>
-              <span className="font-bold text-emerald-600">
-                {formatPrice(product.price.default_discount_price)}
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] text-muted-foreground line-through">
-                  {formatPrice(product.price.default_price)}
+          {product.price ? (
+            product.price.is_on_sale && product.price.default_discount_price ? (
+              <>
+                <span className="font-bold text-emerald-600">
+                  {formatPrice(product.price.default_discount_price)}
                 </span>
-                <Badge variant="destructive" className="text-[9px] py-0 px-1">
-                  -{discountPercent}%
-                </Badge>
-              </div>
-            </>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground line-through">
+                    {formatPrice(product.price.default_price)}
+                  </span>
+                  <Badge variant="destructive" className="text-[9px] py-0 px-1">
+                    -{discountPercent}%
+                  </Badge>
+                </div>
+              </>
+            ) : (
+              <span className="font-bold text-foreground">
+                {formatPrice(product.price.default_price)}
+              </span>
+            )
           ) : (
-            <span className="font-bold text-foreground">
-              {formatPrice(product.price.default_price)}
-            </span>
+            <span className="text-xs text-muted-foreground">—</span>
           )}
         </div>
       </td>

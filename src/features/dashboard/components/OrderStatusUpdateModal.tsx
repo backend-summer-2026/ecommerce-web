@@ -37,6 +37,8 @@ export function OrderStatusUpdateModal({
         orderNumber,
         payload: {
           status,
+          new_status: status,
+          comment: adminNotes.trim() || undefined,
           tracking_number: trackingNumber.trim() || undefined,
           admin_notes: adminNotes.trim() || undefined,
         },

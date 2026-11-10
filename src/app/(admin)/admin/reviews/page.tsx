@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatDate } from '@/lib/utils';
 import {
   MessageSquare,
@@ -245,6 +246,15 @@ export default function AdminReviewsPage() {
           })}
         </div>
       )}
+
+      {/* Pagination */}
+      <AdminPagination
+        page={page}
+        totalCount={data?.count || 0}
+        pageSize={15}
+        onPageChange={(newPage) => setPage(newPage)}
+        isLoading={isLoading}
+      />
 
       {/* Moderatsiya Modali */}
       <ModerateReviewModal

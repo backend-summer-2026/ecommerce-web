@@ -187,7 +187,9 @@ export interface DashboardOrderDetail {
 
 export interface UpdateOrderStatusPayload {
   status: OrderStatus;
+  new_status?: OrderStatus;
   tracking_number?: string;
+  comment?: string;
   admin_notes?: string;
 }
 

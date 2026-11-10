@@ -26,13 +26,11 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { name, slug, brand, primary_category, main_image, price, is_in_stock } = product;
 
   // Chegirma foizini hisoblash
+  const defaultPrice = parseFloat(price?.default_price || '0');
+  const discountPrice = parseFloat(price?.default_discount_price || '0');
   const discountPercent =
-    price.is_on_sale && price.default_discount_price
-      ? Math.round(
-          ((parseFloat(price.default_price) - parseFloat(price.default_discount_price)) /
-            parseFloat(price.default_price)) *
-            100
-        )
+    price?.is_on_sale && discountPrice && defaultPrice > 0
+      ? Math.round(((defaultPrice - discountPrice) / defaultPrice) * 100)
       : 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -92,7 +90,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
         {/* Status Badjlari */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
-          {price.is_on_sale && discountPercent > 0 && (
+          {price?.is_on_sale && discountPercent > 0 && (
             <Badge variant="destructive" className="font-semibold text-xs shadow-xs px-2 py-0.5">
               -{discountPercent}%
             </Badge>
@@ -137,19 +135,23 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         {/* Narx va Savatcha tugmasi */}
         <div className="mt-auto pt-3 flex items-end justify-between gap-2 border-t border-border/40">
           <div className="flex flex-col">
-            {price.is_on_sale && price.default_discount_price ? (
-              <>
-                <span className="text-xs text-muted-foreground line-through">
-                  {formatPrice(price.default_price)}
+            {price ? (
+              price.is_on_sale && price.default_discount_price ? (
+                <>
+                  <span className="text-xs text-muted-foreground line-through">
+                    {formatPrice(price.default_price)}
+                  </span>
+                  <span className="text-base font-bold text-destructive">
+                    {formatPrice(price.default_discount_price)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-base font-bold text-foreground">
+                  {formatPrice(price.default_final_price || price.default_price)}
                 </span>
-                <span className="text-base font-bold text-destructive">
-                  {formatPrice(price.default_discount_price)}
-                </span>
-              </>
+              )
             ) : (
-              <span className="text-base font-bold text-foreground">
-                {formatPrice(price.default_final_price || price.default_price)}
-              </span>
+              <span className="text-sm font-medium text-muted-foreground">—</span>
             )}
           </div>
 

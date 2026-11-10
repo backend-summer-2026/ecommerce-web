@@ -20,6 +20,9 @@ export function parseOrderError(error: unknown): string {
     if (typeof data.detail === 'string') {
       return data.detail;
     }
+    if (Array.isArray(data.detail) && data.detail.length > 0) {
+      return String(data.detail[0]);
+    }
     if (typeof data.message === 'string') {
       return data.message;
     }

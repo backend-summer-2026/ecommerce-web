@@ -5,12 +5,14 @@ import type {
   CategoryDetail,
   BrandItem,
   PaginatedProductsResponse,
+  ProductListItem,
   ProductDetail,
   ProductVariant,
   CatalogFiltersResponse,
   FeaturedProductsResponse,
   SearchSuggestResponse,
   CatalogQueryParams,
+  CreateProductPayload,
 } from '@/types/catalog';
 
 export const catalogApi = {
@@ -102,6 +104,14 @@ export const catalogApi = {
    */
   async getFeatured(): Promise<FeaturedProductsResponse> {
     const { data } = await apiClient.get<FeaturedProductsResponse>(API_ENDPOINTS.CATALOG.FEATURED);
+    return data;
+  },
+
+  /**
+   * Yangi mahsulot yaratish (Admin / Backoffice)
+   */
+  async createProduct(payload: CreateProductPayload): Promise<ProductListItem> {
+    const { data } = await apiClient.post<ProductListItem>(API_ENDPOINTS.CATALOG.PRODUCTS, payload);
     return data;
   },
 };

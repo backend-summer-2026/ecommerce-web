@@ -65,9 +65,9 @@ export interface ProductListItem {
     id: number;
     name: string;
     slug: string;
-  };
+  } | null;
   main_image: string | null;
-  price: ProductPrice;
+  price: ProductPrice | null;
   is_in_stock: boolean;
   created_at: string;
 }
@@ -242,4 +242,30 @@ export interface CatalogQueryParams {
   page?: number | string;
   page_size?: number | string;
   [key: string]: string | number | boolean | undefined;
+}
+
+export interface CreateProductVariantPayload {
+  sku?: string;
+  title?: string;
+  price?: string | number;
+  discountPrice?: string | number;
+  discount_price?: string | number;
+  stock?: number;
+  isDefault?: boolean;
+  attributes?: Record<string, string>;
+}
+
+export interface CreateProductPayload {
+  name: string;
+  slug?: string;
+  brand?: string;
+  category?: string;
+  price: string | number;
+  discount_price?: string | number;
+  stock?: number | string;
+  image_url?: string;
+  short_description?: string;
+  description?: string;
+  sku?: string;
+  variants?: CreateProductVariantPayload[];
 }

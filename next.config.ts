@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   skipTrailingSlashRedirect: true,
+  allowedDevOrigins: [
+    'localhost:3000',
+    '127.0.0.1:3000',
+    '192.168.1.201:3000',
+    '192.168.1.201',
+  ],
   images: {
     dangerouslyAllowLocalIP: true,
     remotePatterns: [
@@ -17,6 +23,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: 'localhost',
+        port: '8000',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '192.168.1.201',
         port: '8000',
         pathname: '/**',
       },

@@ -58,15 +58,12 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
   const { cart, itemCount, isLoading: isCartLoading, fetchCart } = useCartStore();
 
-  const userDefaultName = user
-    ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '')
-    : '';
-  const userDefaultPhone = user?.phone_number || '+998';
-
   // Manzil formasi holati
   const [address, setAddress] = useState<OrderAddress>(() => ({
-    recipient_name: '',
-    phone_number: '',
+    recipient_name: user
+      ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '')
+      : '',
+    phone_number: user?.phone_number || '+998',
     alternative_phone_number: '',
     region: 'Toshkent shahri',
     district: '',
@@ -77,6 +74,22 @@ export default function CheckoutPage() {
     delivery_instructions: '',
   }));
 
+  // Foydalanuvchi ma'lumotlari yuklanganda manzilni to'ldirish
+  useEffect(() => {
+    if (user) {
+      setAddress((prev) => ({
+        ...prev,
+        recipient_name:
+          prev.recipient_name ||
+          (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : ''),
+        phone_number:
+          prev.phone_number && prev.phone_number !== '+998'
+            ? prev.phone_number
+            : (user.phone_number || '+998'),
+      }));
+    }
+  }, [user]);
+
   // Savatchani yangilash
   useEffect(() => {
     fetchCart();
@@ -84,7 +97,7 @@ export default function CheckoutPage() {
 
   // Yetkazib berish va to'lov usullari
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('STANDARD');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | 'SAVED_CARD'>('SAVED_CARD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | 'SAVED_CARD'>('CASH_ON_DELIVERY');
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -96,6 +109,16 @@ export default function CheckoutPage() {
   const defaultCard = verifiedCards.find((c) => c.is_default) || verifiedCards[0];
   const activeCardId = selectedCardId ?? defaultCard?.id ?? null;
 
+  // Agar tasdiqlangan kartalar mavjud bo'lsa, birlamchi qilib saqlangan kartani tanlash
+  useEffect(() => {
+    if (!isCardsLoading && verifiedCards.length > 0) {
+      if (!selectedCardId && defaultCard) {
+        setSelectedCardId(defaultCard.id);
+        setPaymentMethod('SAVED_CARD');
+      }
+    }
+  }, [verifiedCards.length, isCardsLoading]);
+
   const initializePaymentMutation = useInitializePayment();
   const payWithCardMutation = usePayWithCard();
 
@@ -104,22 +127,21 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
+  const sanitizedCoupon = appliedCoupon?.trim() || undefined;
+
   // Kassa hisob-kitob predprosmotri
   const {
     data: preview,
   } = useCheckoutPreview(
     {
       shipping_method: shippingMethod,
-      coupon_code: appliedCoupon,
+      coupon_code: sanitizedCoupon,
       region: address.region,
     },
     isAuthenticated && itemCount > 0
   );
 
   const createOrderMutation = useCreateOrder();
-
-  const activeRecipientName = address.recipient_name || userDefaultName;
-  const activePhoneNumber = address.phone_number || userDefaultPhone;
 
   // Kuponni tekshirish
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -154,8 +176,8 @@ export default function CheckoutPage() {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalRecipient = activeRecipientName.trim();
-    const finalPhone = activePhoneNumber.trim();
+    const finalRecipient = address.recipient_name.trim();
+    const finalPhone = address.phone_number.trim();
 
     if (!finalRecipient) {
       toast.error('Iltimos, qabul qiluvchi ismini kiriting');
@@ -174,6 +196,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (paymentMethod === 'SAVED_CARD' && !activeCardId) {
+      toast.error('Iltimos, to‘lov uchun saqlangan kartani tanlang yoki boshqa to‘lov usulini tanlang');
+      return;
+    }
+
     setIsProcessingPayment(true);
     try {
       // Backend create order accepts standard PaymentMethod
@@ -188,21 +215,15 @@ export default function CheckoutPage() {
         },
         shipping_method: shippingMethod,
         payment_method: orderPaymentMethod,
-        coupon_code: appliedCoupon,
+        coupon_code: sanitizedCoupon,
         customer_notes: customerNotes.trim() || undefined,
       });
 
       if (paymentMethod === 'SAVED_CARD') {
-        if (!activeCardId) {
-          toast.success(`Buyurtma #${order.order_number} yaratildi! To‘lovni yakunlash uchun kartani tanlang.`);
-          router.push(`/orders/${order.order_number}`);
-          return;
-        }
-
         try {
           const payRes = await payWithCardMutation.mutateAsync({
             order_number: order.order_number,
-            card_id: activeCardId,
+            card_id: activeCardId!,
           });
           toast.success(
             payRes.message ||
@@ -215,7 +236,11 @@ export default function CheckoutPage() {
           );
           router.push(`/orders/${order.order_number}`);
         }
-      } else if (paymentMethod === 'PAYME' || paymentMethod === 'CLICK') {
+      } else if (
+        paymentMethod === 'PAYME' ||
+        paymentMethod === 'CLICK' ||
+        paymentMethod === 'UZUM'
+      ) {
         try {
           const returnUrl = `${window.location.origin}/payments/verify?order_number=${order.order_number}`;
           const initRes = await initializePaymentMutation.mutateAsync({
@@ -224,9 +249,10 @@ export default function CheckoutPage() {
             return_url: returnUrl,
           });
 
-          if (initRes.payment_url) {
+          const checkoutUrl = (initRes as any).checkout_url || initRes.payment_url;
+          if (checkoutUrl) {
             toast.info(`${paymentMethod} to‘lov oynasiga yo‘naltirilmoqda...`);
-            window.location.href = initRes.payment_url;
+            window.location.href = checkoutUrl;
             return;
           } else {
             toast.success(`Buyurtma #${order.order_number} qabul qilindi!`);
@@ -348,7 +374,7 @@ export default function CheckoutPage() {
                   </label>
                   <Input
                     required
-                    value={activeRecipientName}
+                    value={address.recipient_name}
                     onChange={(e) =>
                       setAddress((prev) => ({ ...prev, recipient_name: e.target.value }))
                     }
@@ -363,7 +389,7 @@ export default function CheckoutPage() {
                   </label>
                   <Input
                     required
-                    value={activePhoneNumber}
+                    value={address.phone_number}
                     onChange={(e) =>
                       setAddress((prev) => ({ ...prev, phone_number: e.target.value }))
                     }
@@ -888,6 +914,11 @@ export default function CheckoutPage() {
                 ) : paymentMethod === 'CLICK' ? (
                   <>
                     <span>Click orqali to‘lovga o‘tish</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                ) : paymentMethod === 'UZUM' ? (
+                  <>
+                    <span>Uzum Bank orqali to‘lovga o‘tish</span>
                     <ArrowRight className="size-4" />
                   </>
                 ) : (

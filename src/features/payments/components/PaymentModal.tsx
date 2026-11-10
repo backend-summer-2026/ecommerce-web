@@ -92,9 +92,10 @@ export function PaymentModal({
         return_url: returnUrl,
       });
 
-      if (res.payment_url) {
+      const checkoutUrl = res.checkout_url || res.payment_url;
+      if (checkoutUrl) {
         toast.info(`${provider} to‘lov sahifasiga yo‘naltirilmoqda...`);
-        window.location.href = res.payment_url;
+        window.location.href = checkoutUrl;
       } else {
         toast.success('To‘lov muvaffaqiyatli qabul qilindi');
         onClose();

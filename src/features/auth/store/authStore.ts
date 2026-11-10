@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
 
   setAuth: (user, accessToken, refreshToken) => {
-    const role = user.role || 'customer';
+    const role = user?.role || 'customer';
     setStoredTokens(accessToken, refreshToken, role);
 
     set({
@@ -42,6 +42,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       isLoading: false,
     });
+
+    // Agar user to'liq kelmagan bo'lsa, profilni yuklash
+    if (!user || !user.email) {
+      get().fetchProfile();
+    }
 
     // Mehmon savatchasini hisobga birlashtirish
     const guestKey = getGuestSessionKey();

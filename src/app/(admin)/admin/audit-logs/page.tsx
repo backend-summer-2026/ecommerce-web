@@ -9,6 +9,7 @@ import {
 } from '@/features/dashboard/components';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import {
   ShieldCheck,
   Search,
@@ -122,10 +123,19 @@ export default function AdminAuditLogsPage() {
       </div>
 
       {/* Audit Jadvali */}
-      <StaffAuditLogsTable
-        logs={data?.results}
-        isLoading={isLoading}
-      />
+      <div className="space-y-0 border rounded-xl overflow-hidden bg-card">
+        <StaffAuditLogsTable
+          logs={data?.results}
+          isLoading={isLoading}
+        />
+        <AdminPagination
+          page={page}
+          totalCount={data?.count || 0}
+          pageSize={25}
+          onPageChange={(newPage) => setPage(newPage)}
+          isLoading={isLoading}
+        />
+      </div>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatDate } from '@/lib/utils';
 import {
   Bell,
@@ -253,6 +254,14 @@ export default function AdminNotificationsPage() {
                 </div>
               )}
             </CardContent>
+
+            <AdminPagination
+              page={page}
+              totalCount={emailsData?.count || 0}
+              pageSize={15}
+              onPageChange={(newPage) => setPage(newPage)}
+              isLoading={isEmailsLoading}
+            />
           </Card>
         </div>
       )}

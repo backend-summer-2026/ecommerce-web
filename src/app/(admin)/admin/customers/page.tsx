@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatPrice, formatDate } from '@/lib/utils';
 import {
   Users,
@@ -220,6 +221,15 @@ export default function AdminCustomersPage() {
             </div>
           )}
         </CardContent>
+
+        {/* Pagination */}
+        <AdminPagination
+          page={page}
+          totalCount={data?.count || 0}
+          pageSize={15}
+          onPageChange={(newPage) => setPage(newPage)}
+          isLoading={isLoading}
+        />
       </Card>
 
       {/* Mijoz Dosyesi Modali */}

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatPrice } from '@/lib/utils';
 import {
   Package,
@@ -346,6 +347,19 @@ export default function AdminInventoryPage() {
               </div>
             )}
           </CardContent>
+
+          {/* Pagination */}
+          <AdminPagination
+            page={page}
+            totalCount={
+              activeTab === 'LOW_STOCK'
+                ? lowStockData?.count || 0
+                : inventoryData?.count || 0
+            }
+            pageSize={15}
+            onPageChange={(newPage) => setPage(newPage)}
+            isLoading={isCurrentLoading}
+          />
         </Card>
       )}
 

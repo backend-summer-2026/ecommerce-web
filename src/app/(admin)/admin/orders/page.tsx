@@ -3,17 +3,22 @@
 import React, { useState } from 'react';
 import {
   useAdminOrders,
+  useUpdateOrderStatus,
 } from '@/features/dashboard/hooks/useDashboard';
 import {
   OrderDetailModal,
   OrderStatusUpdateModal,
+  OrdersKanbanBoard,
 } from '@/features/dashboard/components';
+import { PermissionGate } from '@/features/admin/rbac';
+import { exportToCsv } from '@/lib/exportUtils';
 import { DashboardOrderListItem } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminPagination } from '@/components/ui/AdminPagination';
 import { formatPrice, formatDate } from '@/lib/utils';
 import {
   ShoppingBag,
@@ -24,6 +29,9 @@ import {
   MessageSquare,
   Clock,
   Filter,
+  LayoutList,
+  Kanban,
+  Download,
 } from 'lucide-react';
 import { OrderStatus } from '@/types/orders';
 
@@ -38,6 +46,7 @@ const STATUS_TABS: Array<{ label: string; value: string }> = [
 ];
 
 export default function AdminOrdersPage() {
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -45,14 +54,39 @@ export default function AdminOrdersPage() {
   const [inspectOrderNumber, setInspectOrderNumber] = useState<string | null>(null);
   const [statusModalOrder, setStatusModalOrder] = useState<DashboardOrderListItem | null>(null);
 
+  const updateStatusMutation = useUpdateOrderStatus();
+
   const { data, isLoading, refetch, isRefetching } = useAdminOrders({
     page,
-    page_size: 15,
+    page_size: viewMode === 'kanban' ? 50 : 15,
     status: selectedStatus || undefined,
     q: searchQuery.trim() || undefined,
   });
 
   const orders = data?.results ?? [];
+
+  const handleKanbanAdvance = (order: DashboardOrderListItem, nextStatus: OrderStatus) => {
+    updateStatusMutation.mutate({
+      orderNumber: order.order_number,
+      payload: { status: nextStatus },
+    });
+  };
+
+  const handleExportOrders = () => {
+    if (orders.length === 0) return;
+    exportToCsv(
+      orders.map((o) => ({
+        'Buyurtma #': o.order_number,
+        'Mijoz': o.customer_name,
+        'Email': o.user_email,
+        'Summa': o.total_price,
+        'Status': o.status,
+        'To\'lov': o.payment_status,
+        'Sana': o.created_at,
+      })),
+      'buyurtmalar_royxati'
+    );
+  };
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -98,16 +132,51 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isRefetching}
-          className="gap-1.5 text-xs font-semibold self-start sm:self-auto"
-        >
-          <RefreshCw className={`size-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-          <span>Yangilash</span>
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Ko'rinish rejimi: Jadval / Kanban */}
+          <div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="h-7 px-2.5 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <LayoutList className="size-3.5" />
+              <span>Jadval</span>
+            </Button>
+            <Button
+              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('kanban')}
+              className="h-7 px-2.5 text-xs font-semibold gap-1.5 cursor-pointer"
+            >
+              <Kanban className="size-3.5" />
+              <span>Kanban</span>
+            </Button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportOrders}
+            className="gap-1.5 text-xs font-semibold h-8 cursor-pointer"
+            title="CSV ga eksport qilish"
+          >
+            <Download className="size-3.5" />
+            <span className="hidden sm:inline">CSV</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="gap-1.5 text-xs font-semibold h-8 cursor-pointer"
+          >
+            <RefreshCw className={`size-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+            <span>Yangilash</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Tablari & Qidiruv */}
@@ -143,9 +212,17 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Buyurtmalar Jadvali */}
-      <Card>
-        <CardContent className="p-0">
+      {/* Buyurtmalar: Jadval yoki Kanban doskasi */}
+      {viewMode === 'kanban' ? (
+        <OrdersKanbanBoard
+          orders={orders}
+          onInspectOrder={(orderNum) => setInspectOrderNumber(orderNum)}
+          onUpdateStatus={handleKanbanAdvance}
+          isLoading={isLoading}
+        />
+      ) : (
+        <Card className="shadow-2xs border">
+          <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 space-y-4">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -230,15 +307,17 @@ export default function AdminOrdersPage() {
                             <span>Ko'rish</span>
                           </Button>
 
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setStatusModalOrder(order)}
-                            className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit className="size-3" />
-                            <span>Status</span>
-                          </Button>
+                          <PermissionGate permission="orders:update_status">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setStatusModalOrder(order)}
+                              className="h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                              <Edit className="size-3" />
+                              <span>Status</span>
+                            </Button>
+                          </PermissionGate>
                         </div>
                       </td>
                     </tr>
@@ -248,7 +327,17 @@ export default function AdminOrdersPage() {
             </div>
           )}
         </CardContent>
+
+        {/* Pagination */}
+        <AdminPagination
+          page={page}
+          totalCount={data?.count || 0}
+          pageSize={15}
+          onPageChange={(newPage) => setPage(newPage)}
+          isLoading={isLoading}
+        />
       </Card>
+      )}
 
       {/* Buyurtma Tafsilotlari Modali */}
       <OrderDetailModal
