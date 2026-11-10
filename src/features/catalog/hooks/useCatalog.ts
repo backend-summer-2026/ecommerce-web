@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { catalogApi } from '../api/catalogApi';
-import type { CatalogQueryParams } from '@/types/catalog';
+import type { CatalogQueryParams, CreateProductPayload } from '@/types/catalog';
 
 export const catalogKeys = {
   all: ['catalog'] as const,
@@ -130,5 +130,20 @@ export function useFeaturedProducts() {
     queryKey: catalogKeys.featured(),
     queryFn: () => catalogApi.getFeatured(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Yangi mahsulot yaratish uchun mutatsiya hooki
+ */
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateProductPayload) => catalogApi.createProduct(payload),
+    onSuccess: () => {
+      // Barcha mahsulotlar keshlarini tozalash va qayta yuklash
+      queryClient.invalidateQueries({ queryKey: catalogKeys.all });
+    },
   });
 }

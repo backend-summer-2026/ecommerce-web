@@ -11,27 +11,58 @@ import type {
 } from '@/types/auth';
 import axios from 'axios';
 
+function translateBackendMessage(msg: string): string {
+  const lower = msg.toLowerCase();
+  if (lower.includes('no account found with this email')) {
+    return "Ushbu elektron pochta bilan hisob topilmadi. Iltimos, avval ro'yxatdan o'ting.";
+  }
+  if (lower.includes('invalid verification code')) {
+    return "Tasdiqlash kodi noto'g'ri. Iltimos, tekshirib qayta kiriting.";
+  }
+  if (lower.includes('verification code has expired')) {
+    return "Tasdiqlash kodining amal qilish muddati tugagan. Iltimos, yangi kod so'rang.";
+  }
+  if (lower.includes('no active verification code found')) {
+    return "Faol tasdiqlash kodi topilmadi. Iltimos, yangi kod yuborishni so'rang.";
+  }
+  if (lower.includes('please wait') && lower.includes('seconds')) {
+    const match = msg.match(/\d+/);
+    const secs = match ? match[0] : 'bir oz';
+    return `Yangi kod so'rash uchun yana ${secs} soniya kuting.`;
+  }
+  if (lower.includes('invalid email or password')) {
+    return "Elektron pochta yoki parol noto'g'ri.";
+  }
+  if (lower.includes('user with this email already exists')) {
+    return "Ushbu elektron pochta bilan allaqachon hisob ochilgan. Tizimga kiring.";
+  }
+  if (lower.includes('not been verified')) {
+    return "Hisobingiz hali tasdiqlanmagan. Iltimos, emailingizga yuborilgan OTP kod bilan tasdiqlang.";
+  }
+  return msg;
+}
+
 export function parseApiError(error: unknown): string {
   if (axios.isAxiosError(error) && error.response?.data) {
     const data = error.response.data as Record<string, unknown>;
 
     if (typeof data.detail === 'string') {
-      return data.detail;
+      return translateBackendMessage(data.detail);
     }
     if (typeof data.message === 'string') {
-      return data.message;
+      return translateBackendMessage(data.message);
     }
     if (Array.isArray(data.non_field_errors) && data.non_field_errors.length > 0) {
-      return String(data.non_field_errors[0]);
+      return translateBackendMessage(String(data.non_field_errors[0]));
     }
 
     // Har bir maydon bo'yicha xatoliklarni tekshirish
     const fieldErrors: string[] = [];
     for (const [key, value] of Object.entries(data)) {
       if (Array.isArray(value) && value.length > 0) {
-        fieldErrors.push(`${key}: ${value[0]}`);
+        fieldErrors.push(translateBackendMessage(String(value[0])));
       } else if (typeof value === 'string') {
-        fieldErrors.push(`${key}: ${value}`);
+        fieldErrors.push(translateBackendMessage(value));
       }
     }
     if (fieldErrors.length > 0) {
@@ -40,7 +71,7 @@ export function parseApiError(error: unknown): string {
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return translateBackendMessage(error.message);
   }
 
   return 'Kutilmagan xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.';
@@ -58,8 +89,8 @@ export const authApi = {
   /**
    * Yangi mijoz hisobini ro'yxatdan o'tkazish (OTP emailingizga yuboriladi)
    */
-  async register(registerData: RegisterData): Promise<{ message: string; email: string }> {
-    const { data } = await apiClient.post<{ message: string; email: string }>(
+  async register(registerData: RegisterData): Promise<{ message: string; email: string; otp_code?: string }> {
+    const { data } = await apiClient.post<{ message: string; email: string; otp_code?: string }>(
       API_ENDPOINTS.AUTH.REGISTER,
       registerData
     );
@@ -67,14 +98,34 @@ export const authApi = {
   },
 
   /**
-   * Bir martalik OTP kod yuborish / qayta yuborish
+   * Bir martalik OTP kod yuborish
    */
-  async sendOtp(otpData: SendOtpData): Promise<{ message: string }> {
-    const { data } = await apiClient.post<{ message: string }>(
+  async sendOtp(otpData: SendOtpData): Promise<{ message: string; otp_code?: string }> {
+    const { data } = await apiClient.post<{ message: string; otp_code?: string }>(
       API_ENDPOINTS.AUTH.SEND_OTP,
       otpData
     );
     return data;
+  },
+
+  /**
+   * OTP kodni qayta yuborish (resend)
+   */
+  async resendOtp(otpData: SendOtpData): Promise<{ message: string; otp_code?: string }> {
+    try {
+      const { data } = await apiClient.post<{ message: string; otp_code?: string }>(
+        API_ENDPOINTS.AUTH.RESEND_OTP,
+        otpData
+      );
+      return data;
+    } catch {
+      // Backendda resend-otp bo'lmasa, send-otp orqali yuborish
+      const { data } = await apiClient.post<{ message: string; otp_code?: string }>(
+        API_ENDPOINTS.AUTH.SEND_OTP,
+        otpData
+      );
+      return data;
+    }
   },
 
   /**

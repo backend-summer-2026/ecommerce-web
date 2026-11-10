@@ -16,9 +16,11 @@ import {
   Loader2,
   Package,
   CreditCard,
+  Receipt,
   Bell,
   LayoutDashboard,
   CheckCircle2,
+  Settings,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -187,11 +189,25 @@ export default function ProfilePage() {
                 <span>Bank kartalari</span>
               </Link>
               <Link
+                href="/profile/payments"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition"
+              >
+                <Receipt className="size-4 text-muted-foreground" />
+                <span>To‘lovlar tarixi</span>
+              </Link>
+              <Link
                 href="/notifications"
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition"
               >
                 <Bell className="size-4 text-muted-foreground" />
                 <span>Bildirishnomalar</span>
+              </Link>
+              <Link
+                href="/profile/settings"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition"
+              >
+                <Settings className="size-4 text-muted-foreground" />
+                <span>Sozlamalar</span>
               </Link>
             </CardContent>
           </Card>

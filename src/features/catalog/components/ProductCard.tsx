@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Check, PackageX, Sparkles } from 'lucide-react';
+import { ShoppingCart, Check, PackageX, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, normalizeImageUrl } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useCartStore } from '@/features/cart/store/cartStore';
+import { catalogApi } from '@/features/catalog/api/catalogApi';
 import type { ProductListItem } from '@/types/catalog';
 
 interface ProductCardProps {
@@ -18,20 +20,20 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [imgError, setImgError] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const { addItem } = useCartStore();
 
   const { name, slug, brand, primary_category, main_image, price, is_in_stock } = product;
 
   // Chegirma foizini hisoblash
+  const defaultPrice = parseFloat(price?.default_price || '0');
+  const discountPrice = parseFloat(price?.default_discount_price || '0');
   const discountPercent =
-    price.is_on_sale && price.default_discount_price
-      ? Math.round(
-          ((parseFloat(price.default_price) - parseFloat(price.default_discount_price)) /
-            parseFloat(price.default_price)) *
-            100
-        )
+    price?.is_on_sale && discountPrice && defaultPrice > 0
+      ? Math.round(((defaultPrice - discountPrice) / defaultPrice) * 100)
       : 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -42,10 +44,26 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
     if (onAddToCart) {
       onAddToCart(product);
-    } else {
-      setIsAdded(true);
-      toast.success(`"${name}" savatchaga qo'shildi!`);
-      setTimeout(() => setIsAdded(false), 2000);
+      return;
+    }
+
+    try {
+      setIsAdding(true);
+      const detail = await catalogApi.getProductDetail(slug);
+      const variantId = detail.default_variant?.id || detail.variants?.[0]?.id;
+      if (!variantId) {
+        toast.error('Ushbu mahsulot varianti topilmadi');
+        return;
+      }
+      const success = await addItem(variantId, 1, true);
+      if (success) {
+        setIsAdded(true);
+        setTimeout(() => setIsAdded(false), 2000);
+      }
+    } catch {
+      toast.error('Savatchaga qo‘shishda xatolik yuz berdi');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -55,7 +73,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <Link href={`/products/${slug}`} className="relative aspect-square w-full overflow-hidden bg-muted/40">
         {main_image && !imgError ? (
           <Image
-            src={main_image}
+            src={normalizeImageUrl(main_image)}
             alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
@@ -72,7 +90,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
         {/* Status Badjlari */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
-          {price.is_on_sale && discountPercent > 0 && (
+          {price?.is_on_sale && discountPercent > 0 && (
             <Badge variant="destructive" className="font-semibold text-xs shadow-xs px-2 py-0.5">
               -{discountPercent}%
             </Badge>
@@ -117,31 +135,41 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         {/* Narx va Savatcha tugmasi */}
         <div className="mt-auto pt-3 flex items-end justify-between gap-2 border-t border-border/40">
           <div className="flex flex-col">
-            {price.is_on_sale && price.default_discount_price ? (
-              <>
-                <span className="text-xs text-muted-foreground line-through">
-                  {formatPrice(price.default_price)}
+            {price ? (
+              price.is_on_sale && price.default_discount_price ? (
+                <>
+                  <span className="text-xs text-muted-foreground line-through">
+                    {formatPrice(price.default_price)}
+                  </span>
+                  <span className="text-base font-bold text-destructive">
+                    {formatPrice(price.default_discount_price)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-base font-bold text-foreground">
+                  {formatPrice(price.default_final_price || price.default_price)}
                 </span>
-                <span className="text-base font-bold text-destructive">
-                  {formatPrice(price.default_discount_price)}
-                </span>
-              </>
+              )
             ) : (
-              <span className="text-base font-bold text-foreground">
-                {formatPrice(price.default_final_price || price.default_price)}
-              </span>
+              <span className="text-sm font-medium text-muted-foreground">—</span>
             )}
           </div>
 
           <Button
             size="icon"
             variant={isAdded ? 'default' : 'secondary'}
-            className="size-9 rounded-lg shrink-0 transition-all hover:bg-primary hover:text-primary-foreground"
+            className="size-9 rounded-lg shrink-0 transition-all hover:bg-primary hover:text-primary-foreground cursor-pointer"
             onClick={handleAddToCart}
-            disabled={!is_in_stock}
+            disabled={!is_in_stock || isAdding}
             title={is_in_stock ? "Savatchaga qo'shish" : 'Sotuvda mavjud emas'}
           >
-            {isAdded ? <Check className="size-4" /> : <ShoppingCart className="size-4" />}
+            {isAdding ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : isAdded ? (
+              <Check className="size-4" />
+            ) : (
+              <ShoppingCart className="size-4" />
+            )}
           </Button>
         </div>
       </div>

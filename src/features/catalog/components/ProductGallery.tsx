@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { normalizeImageUrl } from '@/lib/utils';
 import type { ProductMedia } from '@/types/catalog';
 
 interface ProductGalleryProps {
@@ -61,7 +62,7 @@ export function ProductGallery({
       <div className="group relative aspect-square w-full overflow-hidden rounded-2xl border bg-muted/20 shadow-xs">
         {currentFileUrl && !isCurrentError ? (
           <Image
-            src={currentFileUrl}
+            src={normalizeImageUrl(currentFileUrl)}
             alt={activeMedia?.alt_text || productName}
             fill
             priority
@@ -126,7 +127,7 @@ export function ProductGallery({
               >
                 {fileUrl && !isError ? (
                   <Image
-                    src={fileUrl}
+                    src={normalizeImageUrl(fileUrl)}
                     alt={item.alt_text || `${productName} ${idx + 1}`}
                     fill
                     sizes="80px"

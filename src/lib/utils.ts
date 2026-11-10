@@ -45,3 +45,20 @@ export function formatDate(date: string | Date | number): string {
     minute: '2-digit',
   }).format(d);
 }
+
+/**
+ * Rasmlar URL manzilini normallashtirish:
+ * - http://127.0.0.1:8000/media/... yoki http://localhost:8000/media/... manzillarini
+ *   Next.js rewrite orqali nisbiy /media/... ga o'giradi (CORS, turli IP va dev-proxy uchun xavfsiz).
+ * - Nisbiy media/... bo'lsa, oldiga slash qo'shadi.
+ */
+export function normalizeImageUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('/media/')) return url;
+  if (url.startsWith('media/')) return `/${url}`;
+  // http://...:8000/media/... yoki boshqa har qanday host/IP dan kelgan media yo'lini nisbiy /media/... ga o'giradi
+  if (/^https?:\/\/[^/]+\/media\//.test(url)) {
+    return url.replace(/^https?:\/\/[^/]+(\/media\/.*)/, '$1');
+  }
+  return url;
+}

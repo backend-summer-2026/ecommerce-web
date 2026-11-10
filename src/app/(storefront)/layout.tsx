@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { CartDrawer } from '@/features/cart/components/CartDrawer';
 
 export default function StorefrontLayout({
   children,
@@ -12,6 +13,7 @@ export default function StorefrontLayout({
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <CartDrawer />
     </div>
   );
 }
